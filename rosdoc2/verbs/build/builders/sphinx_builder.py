@@ -21,6 +21,8 @@ import shutil
 import subprocess
 import sys
 
+import catkin_pkg
+import catkin_pkg.package
 from jinja2 import Template
 import setuptools
 
@@ -33,6 +35,7 @@ from ..include_links import include_links
 from ..include_user_docs import include_user_docs
 from ..package_repo_url import package_repo_url
 from ..standard_documents import generate_standard_document_files, locate_standard_documents
+from ..parameter_docs import generate_parameter_docs
 
 logger = logging.getLogger('rosdoc2')
 
@@ -656,6 +659,12 @@ class SphinxBuilder(Builder):
         else:
             logger.info('Note: no conf.py provided by the user, '
                         'therefore using a default Sphinx configuration.')
+        
+        exports: list[catkin_pkg.package.Export] = self.build_context.package.exports
+        parameter_files = [e.content for e in exports if e.tagname == "parameter_definition"]
+        has_parameters = len(parameter_files) > 0
+        if has_parameters:
+            generate_parameter_docs(package_xml_directory, parameter_files, wrapped_sphinx_directory)
 
         self.template_variables.update({
             'conf_py_directory': conf_py_directory,
@@ -665,6 +674,7 @@ class SphinxBuilder(Builder):
             'has_documentation': bool(doc_directories),
             'has_readme': 'readme' in standard_docs,
             'interface_counts': interface_counts,
+            'has_parameters': has_parameters,
             'package': self.build_context.package,
             'disable_breathe': self.build_context.disable_breathe,
             'show_doxygen_html': self.build_context.show_doxygen_html,
